@@ -83,10 +83,10 @@ class VisionTransformer(nn.Module):
         self.arch, self.attn_strategy, self.gaussian_std = None, None, 0
         self.addition_cache = dict()
 
-    # gav: Gaussian Augmented Vanilla, n-only: Neighbourhood Only, csa: SCLIP, vanilla: CLIP
+    # gav: Gaussian Augmented Vanilla, nonly: Neighbourhood Only, csa: SCLIP, vanilla: CLIP
     def set_params(self, arch, attn_strategy, gaussian_std):
         assert arch in ['reduced', 'vanilla']
-        assert attn_strategy in ['naclip', 'gav', 'n-only', 'csa', 'vanilla']
+        assert attn_strategy in ['naclip', 'gav', 'nonly', 'csa', 'vanilla']
         assert attn_strategy != 'csa' or arch == 'vanilla'
         assert gaussian_std > 0 or attn_strategy in ['csa', 'vanilla']
         self.arch, self.attn_strategy, self.gaussian_std = arch, attn_strategy, gaussian_std
@@ -187,7 +187,7 @@ class VisionTransformer(nn.Module):
         k = k.contiguous().view(-1, bsz * num_heads, head_dim).transpose(0, 1)
         v = v.contiguous().view(-1, bsz * num_heads, head_dim).transpose(0, 1)
 
-        if self.attn_strategy in ['naclip', 'n-only', 'gav']:
+        if self.attn_strategy in ['naclip', 'nonly', 'gav']:
             if n_patches is None:  # Assume a rectangular image
                 n_patches = 2 * (int((num_tokens - 1) ** 0.5),)
             addition = self.addition_cache.get(n_patches)
@@ -200,7 +200,7 @@ class VisionTransformer(nn.Module):
 
             if self.attn_strategy == 'naclip':
                 attn_weights = torch.bmm(k, k.transpose(1, 2)) * scale
-            elif self.attn_strategy == 'n-only':
+            elif self.attn_strategy == 'nonly':
                 attn_weights = torch.zeros((num_heads, num_tokens, num_tokens)).to(x.dtype).to(x.device)
                 omega = omega * scale * torch.einsum('hop,hPO->hpP', q.norm(dim=2).unsqueeze(1), k.norm(dim=2).unsqueeze(2)).detach()
             elif self.attn_strategy == 'gav':
