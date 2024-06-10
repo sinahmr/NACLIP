@@ -113,10 +113,10 @@ class VisionTransformer(nn.Module):
             x = blk(x)
         blk = self.transformer.resblocks[-1]
         if self.arch == 'vanilla':  # If attn_strategy is also 'vanilla', custom_attn acts the same as vanilla CLIP attn
-            x = x + self.custom_attn(blk.attn, blk.ln_1(x))
+            x = x + self.custom_attn(blk.attn, blk.ln_1(x), n_patches)
             x = x + blk.mlp(blk.ln_2(x))
         elif self.arch == 'reduced':
-            x = self.custom_attn(blk.attn, blk.ln_1(x), n_patches=n_patches)
+            x = self.custom_attn(blk.attn, blk.ln_1(x), n_patches)
         else:
             raise NotImplemented
 
@@ -143,9 +143,8 @@ class VisionTransformer(nn.Module):
         h0 = h // self.patch_size
         w0, h0 = w0 + 0.1, h0 + 0.1
         patch_pos_embed = nn.functional.interpolate(
-            patch_pos_embed.reshape(1, int(math.sqrt(N)), int(math.sqrt(N)), dim).permute(0, 3, 1, 2),
-            scale_factor=(w0 / math.sqrt(N), h0 / math.sqrt(N)),
-            mode='bicubic',
+            patch_pos_embed.reshape(1, int(math.sqrt(N)), int(math.sqrt(N)), dim).permute(0, 3, 1, 2), mode='bicubic',
+            scale_factor=(w0 / math.sqrt(N), h0 / math.sqrt(N)), align_corners=False, recompute_scale_factor=False
         )
         assert int(w0) == patch_pos_embed.shape[-2] and int(h0) == patch_pos_embed.shape[-1]
         patch_pos_embed = patch_pos_embed.permute(0, 2, 3, 1).view(1, -1, dim)
@@ -166,7 +165,7 @@ class VisionTransformer(nn.Module):
         return torch.exp(-dist_square_to_mu)
 
     @staticmethod
-    def get_attention_addition(dim1, dim2, window=None, adjust_for_cls=True):
+    def get_attention_addition(dim1, dim2, window, adjust_for_cls=True):
         m = torch.einsum('ij,kl->ijkl', torch.eye(dim1), torch.eye(dim2))
         m = m.permute((0, 3, 1, 2)).contiguous()  # m[ijkl] = 1 iff (i, j) == (k, l)
         out = F.conv2d(m.view(-1, dim1, dim2).unsqueeze(1), window.unsqueeze(0).unsqueeze(1), padding='same').squeeze(1)
@@ -176,7 +175,7 @@ class VisionTransformer(nn.Module):
             out = torch.hstack([torch.zeros((dim1 * dim2 + 1, 1)), v_adjusted])
         return out
 
-    def custom_attn(self, attn_layer, x, return_attn=False, with_attn=False, n_patches=None):
+    def custom_attn(self, attn_layer, x, n_patches, return_attn=False, with_attn=False):
         num_heads = attn_layer.num_heads
         num_tokens, bsz, embed_dim = x.size()
         head_dim = embed_dim // num_heads
@@ -188,8 +187,6 @@ class VisionTransformer(nn.Module):
         v = v.contiguous().view(-1, bsz * num_heads, head_dim).transpose(0, 1)
 
         if self.attn_strategy in ['naclip', 'nonly', 'gav']:
-            if n_patches is None:  # Assume a rectangular image
-                n_patches = 2 * (int((num_tokens - 1) ** 0.5),)
             addition = self.addition_cache.get(n_patches)
             if addition is None:
                 window_size = [side * 2 - 1 for side in n_patches]

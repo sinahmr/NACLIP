@@ -21,20 +21,19 @@ def parse_args():
     return args
 
 
-def trigger_visualization_hook(cfg, show_dir):
-    default_hooks = cfg.default_hooks
-    if 'visualization' in default_hooks:
-        visualization_hook = default_hooks['visualization']
-        visualization_hook['draw'] = True
+def visualization_hook(cfg, show_dir):
+    if show_dir == '':
+        cfg.default_hooks.pop('visualization', None)
+        return
+    if 'visualization' not in cfg.default_hooks:
+        raise RuntimeError('VisualizationHook must be included in default_hooks, see base_config.py')
+    else:
+        hook = cfg.default_hooks['visualization']
+        hook['draw'] = True
         visualizer = cfg.visualizer
         visualizer['save_dir'] = show_dir
-    else:
-        raise RuntimeError(
-            'VisualizationHook must be included in default_hooks. refer to usage '
-            '"visualization=dict(type=\'VisualizationHook\')"')
-    cfg.model['pamr_steps'] = 50
-    cfg.model['pamr_stride'] = [1, 2, 4, 8, 12, 24]
-    return cfg
+        cfg.model['pamr_steps'] = 50
+        cfg.model['pamr_stride'] = [1, 2, 4, 8, 12, 24]
 
 
 def safe_set_arg(cfg, arg, name, func=lambda x: x):
@@ -56,8 +55,7 @@ def main():
         cfg.model['pamr_steps'] = 0
     elif args.pamr == 'on':
         cfg.model['pamr_steps'] = 10
-    if args.show_dir != '':
-        trigger_visualization_hook(cfg, args)
+    visualization_hook(cfg, args.show_dir)
 
     runner = Runner.from_cfg(cfg)
     runner.test()

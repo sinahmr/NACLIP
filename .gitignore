@@ -1,9 +1,11 @@
 # Mine
 work_logs
 vis
+runs
 other
 .idea
 .DS_Store
+configs/cfg_debug.py
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

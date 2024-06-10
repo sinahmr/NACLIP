@@ -3,8 +3,7 @@ _base_ = './base_config.py'
 # model settings
 model = dict(
     name_path='./configs/cls_voc21.txt',
-    prob_thd=0.1,
-    area_thd=0.1
+    prob_thd=0.1
 )
 
 # dataset settings

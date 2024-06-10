@@ -19,7 +19,7 @@ sys.path.append("..")
 class NACLIP(BaseSegmentor):
     def __init__(self, clip_path, name_path, device=torch.device('cuda'),
                  arch='reduced', attn_strategy='naclip', gaussian_std=5., pamr_steps=10, pamr_stride=(8, 16),
-                 prob_thd=0.0, area_thd=None, logit_scale=40, slide_stride=112, slide_crop=224):
+                 prob_thd=0.0, logit_scale=40, slide_stride=112, slide_crop=224):
 
         data_preprocessor = SegDataPreProcessor(mean=[122.771, 116.746, 104.094], std=[68.501, 66.632, 70.323], rgb_to_bgr=True)
         super().__init__(data_preprocessor=data_preprocessor)
@@ -44,7 +44,6 @@ class NACLIP(BaseSegmentor):
         self.net.visual.set_params(arch, attn_strategy, gaussian_std)
         self.logit_scale = logit_scale
         self.prob_thd = prob_thd
-        self.area_thd = area_thd
         self.slide_stride = slide_stride
         self.slide_crop = slide_crop
         self.align_corners = False
@@ -150,13 +149,6 @@ class NACLIP(BaseSegmentor):
                 cls_index = nn.functional.one_hot(self.query_idx)
                 cls_index = cls_index.T.view(num_cls, num_queries, 1, 1)
                 seg_logits = (seg_logits * cls_index).max(1)[0]
-
-            if self.pamr is None and self.area_thd is not None:
-                # Force segmentations with area < self.area_thd to 0 (background)
-                predictions = nn.functional.one_hot(seg_logits.argmax(0), num_cls).to(seg_logits.dtype)
-                area_pred = predictions[:, :, 1:].sum((0, 1), keepdim=True)  # prone background
-                area_pred = (area_pred > self.area_thd * area_pred.sum()).to(seg_logits.dtype)
-                seg_logits[1:] *= area_pred.transpose(0, -1)
 
             seg_pred = seg_logits.argmax(0, keepdim=True)
             seg_pred[seg_logits.max(0, keepdim=True)[0] < self.prob_thd] = 0
