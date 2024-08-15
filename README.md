@@ -2,6 +2,9 @@
 
 [![arXiv](https://img.shields.io/badge/arXiv-2404.08181-b31b1b.svg)](https://arxiv.org/abs/2404.08181)
 
+<div align="center">
+<img src="./.assets/naclip-illustration.jpg" width="30%" style="border-radius: 20%;">
+</div>
 
 > **Abstract:** Despite the significant progress in deep learning for dense visual recognition problems, such as semantic segmentation, traditional methods are constrained by fixed class sets. Meanwhile, vision-language foundation models, such as CLIP, have showcased remarkable effectiveness in numerous zero-shot image-level tasks, owing to their robust generalizability. Recently, a body of work has investigated utilizing these models in open-vocabulary semantic segmentation (OVSS). However, existing approaches often rely on impractical supervised pre-training or access to additional pre-trained networks. In this work, we propose a strong baseline for training-free OVSS, termed Neighbour-Aware CLIP (NACLIP), representing a straightforward adaptation of CLIP tailored for this scenario. Our method enforces localization of patches in the self-attention of CLIP's vision transformer which, despite being crucial for dense prediction tasks, has been overlooked in the OVSS literature. By incorporating design choices favouring segmentation, our approach significantly improves performance without requiring additional data, auxiliary pre-trained networks, or extensive hyperparameter tuning, making it highly practical for real-world applications. Experiments are performed on 8 popular semantic segmentation benchmarks, yielding state-of-the-art performance on most scenarios.
 
@@ -85,7 +88,7 @@ With the default setup in this repo, the following results (mIoU) should be achi
 
 ## &#x1F64F; Acknowledgments
 
-We gratefully thank the authors of [SCLIP](https://github.com/wangf3014/SCLIP), [CLIP](https://github.com/openai/CLIP), and [MMSegmentation](https://github.com/open-mmlab/mmsegmentation), on which our code is based.
+We gratefully thank the authors of [SCLIP](https://github.com/wangf3014/SCLIP), [CLIP](https://github.com/openai/CLIP), and [MMSegmentation](https://github.com/open-mmlab/mmsegmentation), on which our code is based. The illustration is generated using Google Gemini.
 
 
 ## &#x1F4DA; Citation
