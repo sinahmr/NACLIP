@@ -7,6 +7,8 @@
 <p></p>
 </div>
 
+This repository contains the code for our **WACV 2025** paper, [Pay Attention to Your Neighbours: Training-Free Open-Vocabulary Semantic Segmentation](https://arxiv.org/abs/2404.08181).
+ 
 > **Abstract:** Despite the significant progress in deep learning for dense visual recognition problems, such as semantic segmentation, traditional methods are constrained by fixed class sets. Meanwhile, vision-language foundation models, such as CLIP, have showcased remarkable effectiveness in numerous zero-shot image-level tasks, owing to their robust generalizability. Recently, a body of work has investigated utilizing these models in open-vocabulary semantic segmentation (OVSS). However, existing approaches often rely on impractical supervised pre-training or access to additional pre-trained networks. In this work, we propose a strong baseline for training-free OVSS, termed Neighbour-Aware CLIP (NACLIP), representing a straightforward adaptation of CLIP tailored for this scenario. Our method enforces localization of patches in the self-attention of CLIP's vision transformer which, despite being crucial for dense prediction tasks, has been overlooked in the OVSS literature. By incorporating design choices favouring segmentation, our approach significantly improves performance without requiring additional data, auxiliary pre-trained networks, or extensive hyperparameter tuning, making it highly practical for real-world applications. Experiments are performed on 8 popular semantic segmentation benchmarks, yielding state-of-the-art performance on most scenarios.
 
 
@@ -20,7 +22,7 @@ To run NACLIP, please install the following packages. We used `Python 3.9` in ou
 pip install torch==1.10.1+cu111 torchvision==0.11.2+cu111 -f https://download.pytorch.org/whl/cu111/torch_stable.html
 pip install openmim
 mim install mmcv==2.0.1 mmengine==0.8.4 mmsegmentation==1.1.1
-pip install ftfy regex yapf==0.40.1
+pip install ftfy regex numpy==1.26 yapf==0.40.1
 ```
 
 
@@ -73,15 +75,15 @@ With the default setup in this repo, the following results (mIoU) should be achi
 </thead>
 <tbody>
   <tr>
-    <td>62.36</td>
+    <td>64.07</td>
     <td>34.99</td>
     <td>36.19</td>
-    <td>80.60</td>
+    <td>83.03</td>
     <td>38.27</td>
     <td>38.35</td>
     <td>19.05</td>
-    <td>25.18</td>
-    <td>41.87</td>
+    <td>25.69</td>
+    <td>42.46</td>
   </tr>
 </tbody>
 </table>
@@ -97,11 +99,10 @@ We gratefully thank the authors of [SCLIP](https://github.com/wangf3014/SCLIP), 
 If you find this project useful, please consider citing:
 
 ```bibtex
-@article{hajimiri2024naclip,
+@inproceedings{hajimiri2025naclip,
   title={Pay Attention to Your Neighbours: Training-Free Open-Vocabulary Semantic Segmentation},
   author={Hajimiri, Sina and Ben Ayed, Ismail and Dolz, Jose},
-  year={2024}
-  journal={arXiv preprint},
-  url={https://arxiv.org/abs/2404.08181},
+  year={2025}
+  booktitle={Proceedings of the IEEE/CVF Winter Conference on Applications of Computer Vision},
 }
 ```
