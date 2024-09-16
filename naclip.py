@@ -51,7 +51,7 @@ class NACLIP(BaseSegmentor):
 
         logging.info(f'attn_strategy is {attn_strategy}, arch is {arch} & Gaussian std is {gaussian_std}')
 
-    def forward_feature(self, img, logit_size=None):
+    def forward_feature(self, img):
         if type(img) == list:
             img = img[0]
 
@@ -65,11 +65,10 @@ class NACLIP(BaseSegmentor):
         w, h = img[0].shape[-2] // patch_size, img[0].shape[-1] // patch_size
         out_dim = logits.shape[-1]
         logits = logits.permute(0, 2, 1).reshape(-1, out_dim, w, h)
-        logits = nn.functional.interpolate(logits, size=logit_size if logit_size else img.shape[-2:],
-                                           mode='bilinear', align_corners=self.align_corners)
+        logits = nn.functional.interpolate(logits, size=img.shape[-2:], mode='bilinear', align_corners=self.align_corners)
         return logits
 
-    def forward_slide(self, img, img_metas, stride=112, crop_size=224):
+    def forward_slide(self, img, stride=112, crop_size=224):
         """
         Inference by sliding-window with overlap. If h_crop > h_img or w_crop > w_img,
         the small patch will be used to decode without padding.
@@ -105,9 +104,7 @@ class NACLIP(BaseSegmentor):
                 count_mat[:, :, y1:y2, x1:x2] += 1
         assert (count_mat == 0).sum() == 0
 
-        preds = preds / count_mat
-        img_size = img_metas[0]['ori_shape'][:2]
-        logits = nn.functional.interpolate(preds, size=img_size, mode='bilinear', align_corners=self.align_corners)
+        logits = preds / count_mat
         return logits
 
     def predict(self, inputs, data_samples):
@@ -122,12 +119,14 @@ class NACLIP(BaseSegmentor):
             ] * inputs.shape[0]
 
         if self.slide_crop > 0:
-            seg_logits = self.forward_slide(inputs, batch_img_metas, self.slide_stride, self.slide_crop)
+            seg_logits = self.forward_slide(inputs, self.slide_stride, self.slide_crop)
         else:
-            seg_logits = self.forward_feature(inputs, batch_img_metas[0]['ori_shape'])
+            seg_logits = self.forward_feature(inputs)
+
+        img_size = batch_img_metas[0]['ori_shape']
+        seg_logits = nn.functional.interpolate(seg_logits, size=img_size, mode='bilinear', align_corners=self.align_corners)
 
         if self.pamr:
-            img_size = batch_img_metas[0]['ori_shape']
             img = nn.functional.interpolate(inputs, size=img_size, mode='bilinear', align_corners=self.align_corners)
             try:
                 seg_logits = self.pamr(img, seg_logits.to(img.dtype)).to(self.dtype)
@@ -140,21 +139,21 @@ class NACLIP(BaseSegmentor):
     def postprocess_result(self, seg_logits, data_samples):
         batch_size = seg_logits.shape[0]
         for i in range(batch_size):
-            seg_logits = seg_logits[i] * self.logit_scale
-            seg_logits = seg_logits.softmax(0)  # n_queries * w * h
+            seg_probs = torch.softmax(seg_logits[i] * self.logit_scale, dim=0)  # n_queries * w * h
 
             num_cls, num_queries = max(self.query_idx) + 1, len(self.query_idx)
             if num_cls != num_queries:
-                seg_logits = seg_logits.unsqueeze(0)
+                seg_probs = seg_probs.unsqueeze(0)
                 cls_index = nn.functional.one_hot(self.query_idx)
                 cls_index = cls_index.T.view(num_cls, num_queries, 1, 1)
-                seg_logits = (seg_logits * cls_index).max(1)[0]
+                seg_probs = (seg_probs * cls_index).max(1)[0]
 
-            seg_pred = seg_logits.argmax(0, keepdim=True)
-            seg_pred[seg_logits.max(0, keepdim=True)[0] < self.prob_thd] = 0
+            seg_pred = seg_probs.argmax(0, keepdim=True)
+            seg_pred[seg_probs.max(0, keepdim=True)[0] < self.prob_thd] = 0
+            seg_probs /= seg_probs.sum(0, keepdim=True)
 
             data_samples[i].set_data({
-                'seg_logits': PixelData(**{'data': seg_logits}),
+                'seg_logits': PixelData(**{'data': seg_probs}),
                 'pred_sem_seg': PixelData(**{'data': seg_pred})
             })
 

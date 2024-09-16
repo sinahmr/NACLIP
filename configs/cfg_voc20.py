@@ -2,7 +2,8 @@ _base_ = './base_config.py'
 
 # model settings
 model = dict(
-    name_path='./configs/cls_voc20.txt'
+    name_path='./configs/cls_voc20.txt',
+    slide_crop=0,
 )
 
 # dataset settings

@@ -83,12 +83,12 @@ class VisionTransformer(nn.Module):
         self.arch, self.attn_strategy, self.gaussian_std = None, None, 0
         self.addition_cache = dict()
 
-    # gav: Gaussian Augmented Vanilla, nonly: Neighbourhood Only, csa: SCLIP, vanilla: CLIP
+    # nonly: Neighbourhood Only, kk: KK-Similarity, csa: SCLIP, vanilla: CLIP
     def set_params(self, arch, attn_strategy, gaussian_std):
         assert arch in ['reduced', 'vanilla']
-        assert attn_strategy in ['naclip', 'gav', 'nonly', 'csa', 'vanilla']
+        assert attn_strategy in ['naclip', 'nonly', 'kk', 'csa', 'vanilla']
         assert attn_strategy != 'csa' or arch == 'vanilla'
-        assert gaussian_std > 0 or attn_strategy in ['csa', 'vanilla']
+        assert gaussian_std > 0 or attn_strategy not in ['naclip', 'nonly']
         self.arch, self.attn_strategy, self.gaussian_std = arch, attn_strategy, gaussian_std
 
     def forward(self, x: torch.Tensor, return_all=False):
@@ -186,24 +186,20 @@ class VisionTransformer(nn.Module):
         k = k.contiguous().view(-1, bsz * num_heads, head_dim).transpose(0, 1)
         v = v.contiguous().view(-1, bsz * num_heads, head_dim).transpose(0, 1)
 
-        if self.attn_strategy in ['naclip', 'nonly', 'gav']:
+        if self.attn_strategy in ['naclip', 'nonly']:
             addition = self.addition_cache.get(n_patches)
             if addition is None:
                 window_size = [side * 2 - 1 for side in n_patches]
                 window = VisionTransformer.gaussian_window(*window_size, std=self.gaussian_std)
                 addition = VisionTransformer.get_attention_addition(*n_patches, window).unsqueeze(0).to(x.dtype).to(x.device)
                 self.addition_cache[n_patches] = addition
-            omega = addition.clone()
 
             if self.attn_strategy == 'naclip':
                 attn_weights = torch.bmm(k, k.transpose(1, 2)) * scale
+                omega = addition
             elif self.attn_strategy == 'nonly':
                 attn_weights = torch.zeros((num_heads, num_tokens, num_tokens)).to(x.dtype).to(x.device)
-                omega = omega * scale * torch.einsum('hop,hPO->hpP', q.norm(dim=2).unsqueeze(1), k.norm(dim=2).unsqueeze(2)).detach()
-            elif self.attn_strategy == 'gav':
-                attn_weights = torch.bmm(q, k.transpose(1, 2)) * scale
-                omega = omega * scale * torch.einsum('hop,hPO->hpP', q.norm(dim=2).unsqueeze(1), k.norm(dim=2).unsqueeze(2)).detach()
-
+                omega = addition * (scale * torch.einsum('hop,hPO->hpP', q.norm(dim=2).unsqueeze(1), k.norm(dim=2).unsqueeze(2)).mean().item())
             else:
                 raise NotImplemented
 
@@ -216,6 +212,9 @@ class VisionTransformer(nn.Module):
             attn_weights = F.softmax(q_attn, dim=-1) + F.softmax(k_attn, dim=-1)
         elif self.attn_strategy == 'vanilla':
             attn_weights = torch.bmm(q * scale, k.transpose(1, 2))
+            attn_weights = F.softmax(attn_weights, dim=-1)
+        elif self.attn_strategy == 'kk':
+            attn_weights = torch.bmm(k * scale, k.transpose(1, 2))
             attn_weights = F.softmax(attn_weights, dim=-1)
         else:
             raise NotImplemented(f'attn_strategy {self.attn_strategy} is not implemented')
