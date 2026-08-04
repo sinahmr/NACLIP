@@ -100,9 +100,10 @@ If you find this project useful, please consider citing:
 
 ```bibtex
 @inproceedings{hajimiri2025naclip,
-  title={Pay Attention to Your Neighbours: Training-Free Open-Vocabulary Semantic Segmentation},
-  author={Hajimiri, Sina and Ben Ayed, Ismail and Dolz, Jose},
-  year={2025},
-  booktitle={Proceedings of the IEEE/CVF Winter Conference on Applications of Computer Vision},
+  title     = {Pay Attention to Your Neighbours: Training-Free Open-Vocabulary Semantic Segmentation},
+  author    = {Hajimiri, Sina and Ben Ayed, Ismail and Dolz, Jose},
+  booktitle = {Proceedings of the IEEE/CVF Winter Conference on Applications of Computer Vision},
+  year      = {2025},
+  pages     = {5061-5071},
 }
 ```
